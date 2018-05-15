@@ -1,12 +1,15 @@
 import librosa.core as core
 import scipy.signal as signal
 from scipy.fftpack import ifft
+from scipy.signal import argrelmax
 import numpy as np
 
-genres = ['ChaChaCha', 'Jive', 'Quickstep', ('Rumba-American', 'Rumba-International', 'Rumba-Misc'), 'Samba', 'Tango',
-          'VienneseWaltz', 'Waltz']
+genres_dir = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba-American', 'Rumba-International', 'Rumba-Misc', 'Samba', 'Tango',
+              'VienneseWaltz', 'Waltz']
+genres = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz']
 data_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomData'
 label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations/ballroomGroundTruth'
+
 
 def spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1):
     x = core.stft(data, n_fft=window_size, hop_length=hop_size)
@@ -43,14 +46,24 @@ def alotc(g, t1, t2):
 
 def stacf(data, sr, hop_size, window_size):
     if hop_size:
-        noverlap = window_size-hop_size
+        noverlap = window_size - hop_size
     else:
         noverlap = None
     _, t, x = signal.stft(data, sr, nperseg=window_size, noverlap=noverlap, return_onesided=False)
     acf = ifft(np.abs(x) ** 2, axis=0).real
-    acf = acf[:acf.shape[0]//2+1]
+    acf = acf[:acf.shape[0] // 2 + 1]
     lag = np.arange(acf.shape[0]) / sr
     return lag, t, acf
+
+def tempo_estimation(freq_scale, tempogram):
+    tempo_vector = np.sum(tempogram, axis=1)
+    peak_idx = argrelmax(tempo_vector)
+    peaks = sorted(zip(tempo_vector[peak_idx], peak_idx[0]), key=lambda x: x[0], reverse=True)
+    pack = [(peaks[0][0], freq_scale[peaks[0][1]]), (peaks[1][0], freq_scale[peaks[1][1]])]
+    if pack[0][1] > pack[1][1]:
+        return reversed(pack)
+    else:
+        return pack
 
 
 def bpm_tempogram(tpg, lag, bpm_max, bpm_min):
