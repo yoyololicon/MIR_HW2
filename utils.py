@@ -9,6 +9,7 @@ genres_dir = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba-American', 'Rumba-Interna
 genres = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz']
 data_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomData'
 label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations/ballroomGroundTruth'
+beat_label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations-beat'
 
 
 def spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1):
