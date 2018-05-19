@@ -8,7 +8,7 @@ genres_dir = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba-American', 'Rumba-Interna
               'VienneseWaltz', 'Waltz']
 genres = ['ChaChaCha', 'Jive', 'Quickstep', 'Rumba', 'Samba', 'Tango', 'VienneseWaltz', 'Waltz']
 data_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomData'
-label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations/ballroomGroundTruth'
+bpm_label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations/ballroomGroundTruth'
 beat_label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations-beat'
 
 
@@ -17,14 +17,15 @@ def spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1):
     t = np.arange(x.shape[1]) * hop_size / sr
 
     y = np.log(1 + g * np.abs(x))
-    spec_flux = np.maximum(0., y[:, lag:] - y[:, :-lag]).mean(axis=0)
+    spfx = np.maximum(0., y[:, lag:] - y[:, :-lag]).mean(axis=0)
     t2 = t[:-lag] + (t[lag:] - t[:-lag]) / 2
 
     # post-processing
     filter = np.ones(mean_size) / mean_size
-    u = signal.fftconvolve(spec_flux, filter, 'same')
-    spec_flux_enhance = np.maximum(0., spec_flux - u)
-    return t2, spec_flux_enhance
+    u = signal.fftconvolve(spfx, filter, 'same')
+    spfx_enhance = np.maximum(0., spfx - u)
+    spfx_enhance /= spfx_enhance.max()
+    return t2, spfx_enhance
 
 
 def p_score(g, t1, t2, s1):
@@ -45,7 +46,7 @@ def alotc(g, t1, t2):
         return 0
 
 
-def stacf(data, sr, hop_size, window_size):
+def stacf(data, sr, window_size, hop_size):
     if hop_size:
         noverlap = window_size - hop_size
     else:
@@ -56,15 +57,17 @@ def stacf(data, sr, hop_size, window_size):
     lag = np.arange(acf.shape[0]) / sr
     return lag, t, acf
 
+
 def tempo_estimation(freq_scale, tempogram):
     tempo_vector = np.sum(tempogram, axis=1)
     peak_idx = argrelmax(tempo_vector)
-    peaks = sorted(zip(tempo_vector[peak_idx], peak_idx[0]), key=lambda x: x[0], reverse=True)
-    pack = [(peaks[0][0], freq_scale[peaks[0][1]]), (peaks[1][0], freq_scale[peaks[1][1]])]
+    peaks = sorted(zip(tempo_vector[peak_idx], freq_scale[peak_idx]), key=lambda x: x[0], reverse=True)
+    pack = peaks[:2]
     if pack[0][1] > pack[1][1]:
-        return reversed(pack)
-    else:
-        return pack
+        pack = pack[::-1]
+    s1 = pack[0][0] / (pack[0][0] + pack[1][0])
+    # return t1, t2, s1
+    return pack[0][1], pack[1][1], s1
 
 
 def bpm_tempogram(tpg, lag, bpm_max, bpm_min):

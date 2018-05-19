@@ -17,7 +17,7 @@ vpenalty_func = np.vectorize(penalty_func)
 
 
 def tempo_estimation(nv_curve, sr, window_size):
-    lag, t2, tpg = stacf(nv_curve, sr, None, window_size)
+    lag, t2, tpg = stacf(nv_curve, sr, window_size, hop_size=None)
     tpg = normalize(tpg, axis=0).sum(axis=1)
     mask_tpg = np.zeros(tpg.shape)
     idx = argrelmax(tpg)
@@ -29,12 +29,12 @@ def tempo_estimation(nv_curve, sr, window_size):
 def optimal_beats_sequence(nv_curve, d_, ld):
     D = np.zeros(len(nv_curve) + 1)
     P = np.zeros(len(nv_curve) + 1, dtype=np.int32)
-    penalty = vpenalty_func(np.arange(len(nv_curve)-1, 0, -1), d_)
+    penalty = vpenalty_func(np.arange(len(nv_curve) - 1, 0, -1), d_) * ld
 
     D[1] = nv_curve[0]
     for i in range(2, len(nv_curve) + 1):
         D[i] = nv_curve[i - 1]
-        obj = D[1:i] + penalty[-i+1:] * ld
+        obj = D[1:i] + penalty[-i + 1:]
         maxterm = max(0, np.max(obj))
         if maxterm > 0:
             P[i] = np.argmax(obj) + 1
@@ -81,11 +81,11 @@ def evaluate(label_seq, pred_seq):
 
 
 if __name__ == '__main__':
-    table = PrettyTable(["Genre", "Average P-score", "Average ALOTC"])
+    table = PrettyTable(["Genre", "Precision", "Recall", "F-scores"])
     lw_sr = 100
     ld = 10
 
-    for genre in genres[:2]:
+    for genre in genres:
         score = []
         for g_dir in genres_dir:
             if genre in g_dir and genre[0] == g_dir[0]:
@@ -96,7 +96,6 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, 1024, 1, 25, lag=1)
-                    nv_curve /= np.max(nv_curve)
                     delta = tempo_estimation(nv_curve, lw_sr, 512)
                     beats = optimal_beats_sequence(nv_curve, delta, ld)
                     label = np.loadtxt(os.path.join(beat_label_dir, file_name.replace('.wav', '.beats').split('/')[-1]))
@@ -106,6 +105,10 @@ if __name__ == '__main__':
         p = score[0] / (score[0] + score[1])
         r = score[0] / (score[0] + score[2])
         f = 2 * p * r / (p + r)
-        print(p, r, f)
+        table_row = [genre]
+        table_row.append("{:.4f}".format(p))
+        table_row.append("{:.4f}".format(r))
+        table_row.append("{:.4f}".format(f))
+        table.add_row(table_row)
 
-    # print(table)
+    print(table)
