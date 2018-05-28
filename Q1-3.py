@@ -1,7 +1,8 @@
 from librosa.core import load, stft
 from librosa.util import normalize
 import numpy as np
-from utils import spectral_flux, p_score, genres, data_dir, bpm_label_dir, genres_dir, tempo_estimation
+from utils import spectral_flux, p_score, genres, data_dir, bpm_label_dir, genres_dir, tempo_estimation, \
+    tempo_estimation_sum_harm, harmonics_sum_tempogram
 import os
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
@@ -9,7 +10,7 @@ from prettytable import PrettyTable
 
 def tempogram_f(nv_curve, sr, window_size=512, hop_size=128):
     tpg = normalize(np.abs(stft(nv_curve, n_fft=window_size, hop_length=hop_size)))
-    freq_scale = np.arange(window_size) * sr / window_size * 60
+    freq_scale = np.arange(window_size // 2 + 1) * sr / window_size * 60
     return freq_scale, tpg
 
 
@@ -17,7 +18,7 @@ if __name__ == '__main__':
     table = PrettyTable(["Genre", "P-score", "ALOTC", "1/2T P-score", "1/3T P-score", "1/4T P-score"])
     ratio_list = []
 
-    window_size = 2048
+    window_size = 1024
     lw_sr = 100
     g = 1
     mean_size = 25
@@ -34,6 +35,7 @@ if __name__ == '__main__':
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1)
                     f, tpg = tempogram_f(nv_curve, lw_sr, window_size=1000, hop_size=50)
+                    #f, tpg = harmonics_sum_tempogram(f, tpg)
                     t1, t2, s1 = tempo_estimation(f, tpg)
 
                     with open(os.path.join(bpm_label_dir,
@@ -58,9 +60,9 @@ if __name__ == '__main__':
         for p in out:
             table_row.append("{:.4f}".format(p))
         table.add_row(table_row)
-
         '''
-        fig, ax = plt.subplots(1, 3)
+        fig, ax = plt.subplots(1, 3, sharey='row')
+        fig.set_size_inches(8, 6)
         ax[0].hist(ratio[0])
         ax[0].set_title('T2/T1')
         ax[1].hist(ratio[1])
@@ -69,5 +71,6 @@ if __name__ == '__main__':
         ax[2].set_title('T2/G')
         fig.suptitle(genre)
         plt.show()
+
         '''
     print(table)

@@ -1,24 +1,42 @@
-from librosa.core import load
+from librosa.core import load, stft
 from librosa.util import normalize
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
-from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux, genres_dir, tempo_estimation
+from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux, genres_dir, tempo_estimation, \
+    harmonics_sum_tempogram
 
 
-def tempogram_t(nv_curve, sr, window_size=512, hop_size=None):
-    lag, t2, tpg = stacf(nv_curve, sr, window_size, hop_size=hop_size)
-    tpg = normalize(tpg)
-    freq_scale = 60 / lag[1:]
-    freq_scale = np.concatenate(([0], freq_scale))
-    return freq_scale, tpg
+def CFP(nv_curve, sr, wsize_f, wsize_t, hop_f, hop_t=None):
+    tpg_f = np.abs(stft(nv_curve, n_fft=wsize_f, hop_length=hop_f))
+    freq_f = np.arange(wsize_f // 2 + 1) * sr / wsize_f * 60
+    freq_f, tpg_f = harmonics_sum_tempogram(freq_f, tpg_f)
+    tpg_f = normalize(tpg_f)
+
+    lag, _, tpg = stacf(nv_curve, sr, wsize_t, hop_size=hop_t)
+    tpg_t = normalize(tpg)
+    freq_t = 60 / lag[1:]
+    freq_t = np.concatenate(([0], freq_t))
+
+    tpg_f = tpg_f.mean(axis=1)
+    tpg_t = tpg_t.mean(axis=1)
+
+    pool_scale = (freq_f[1:] + freq_f[:-1]) / 2
+    transformed_tpg_t = np.zeros(len(pool_scale) - 1)
+    for i in range(len(pool_scale) - 1):
+        f1, f2 = pool_scale[i], pool_scale[i + 1]
+        p_idx = (freq_t > f1) & (freq_t < f2)
+        p_value = freq_t[p_idx]
+        if len(p_value) > 0:
+            transformed_tpg_t[i] = np.mean(tpg_t[p_idx])
+
+    cfp = tpg_f[1:-1] * transformed_tpg_t
+    return freq_f[1:-1], cfp[:, None]
 
 
 if __name__ == '__main__':
-    table = PrettyTable(
-        ["Genre", "P-score", "ALOTC", "1/2T P-score", "1/3T P-score", "1/4T P-score", "2T P-score", "3T P-score",
-         "4T P-score"])
+    table = PrettyTable(["Genre", "P-score", "ALOTC"])
     ratio_list = []
 
     window_size = 1024
@@ -37,36 +55,24 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1)
-                    f, tpg = tempogram_t(nv_curve, lw_sr)
+                    f, tpg = CFP(nv_curve, lw_sr, wsize_f=1000, wsize_t=512, hop_f=50)
                     t1, t2, s1 = tempo_estimation(f, tpg)
 
                     with open(os.path.join(bpm_label_dir,
                                            file_name.replace('.wav', '.bpm').split('/')[-1])) as label_file:
                         truth = int(label_file.readline())
-                        score.append([])
-                        score[-1].append(p_score(truth, t1, t2, s1))
-                        score[-1].append(p_score(truth, t1 / 2, t2 / 2, s1))
-                        score[-1].append(p_score(truth, t1 / 3, t2 / 3, s1))
-                        score[-1].append(p_score(truth, t1 / 4, t2 / 4, s1))
-                        score[-1].append(p_score(truth, t1 * 2, t2 * 2, s1))
-                        score[-1].append(p_score(truth, t1 * 3, t2 * 3, s1))
-                        score[-1].append(p_score(truth, t1 * 4, t2 * 4, s1))
+                        # print(truth, t1, t2, s1)
+                        score.append(p_score(truth, t1, t2, s1))
                         ratio.append((t2 / t1, t1 / truth, t2 / truth))
         score = np.array(score)
         ratio = np.array(ratio).T
-        average_p = score.mean(axis=0)
+        average_p = score.mean()
         score[score > 0] = 1
-        average_alotc = score.mean(axis=0)
-        out = []
-        out.append(average_p[0])
-        out.append(average_alotc[0])
-        out += average_p[1:].tolist()
-        table_row = [genre]
-        for p in out:
-            table_row.append("{:.4f}".format(p))
-        table.add_row(table_row)
+        average_alotc = score.mean()
 
+        table.add_row([genre, "{:.4f}".format(average_p), "{:.4f}".format(average_alotc)])
 
+        '''
         fig, ax = plt.subplots(1, 3, sharey='row')
         fig.set_size_inches(8, 6)
         ax[0].hist(ratio[0])
@@ -77,5 +83,6 @@ if __name__ == '__main__':
         ax[2].set_title('T2/G')
         fig.suptitle(genre)
         plt.show()
+        '''
 
     print(table)

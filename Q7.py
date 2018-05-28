@@ -1,12 +1,11 @@
 from librosa.core import load
-from librosa.util import normalize
-from scipy.signal import argrelmax
 import numpy as np
 import os
 import math
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
-from utils import data_dir, beat_label_dir, genres, spectral_flux, genres_dir, stacf
+from utils import data_dir, beat_label_dir, genres, spectral_flux, genres_dir, tempo_estimation
+from Q6 import CFP
 
 
 def penalty_func(d, d_):
@@ -14,16 +13,6 @@ def penalty_func(d, d_):
 
 
 vpenalty_func = np.vectorize(penalty_func)
-
-
-def tempo_estimation(nv_curve, sr, window_size):
-    lag, t2, tpg = stacf(nv_curve, sr, window_size, hop_size=None)
-    tpg = normalize(tpg, axis=0).sum(axis=1)
-    mask_tpg = np.zeros(tpg.shape)
-    idx = argrelmax(tpg)
-    mask_tpg[idx] = tpg[idx]
-    delta = np.argmax(mask_tpg)
-    return delta
 
 
 def optimal_beats_sequence(nv_curve, d_, ld):
@@ -83,7 +72,7 @@ def evaluate(label_seq, pred_seq):
 if __name__ == '__main__':
     table = PrettyTable(["Genre", "Precision", "Recall", "F-scores"])
     lw_sr = 100
-    ld = 10
+    ld = 20
 
     for genre in genres:
         score = []
@@ -96,7 +85,9 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, 1024, 1, 25, lag=1)
-                    delta = tempo_estimation(nv_curve, lw_sr, 512)
+                    f, tpg = CFP(nv_curve, lw_sr, 2000, 512, 50)
+                    t1, t2, s1 = tempo_estimation(f, tpg)
+                    delta = 60 / t1 * lw_sr
                     beats = optimal_beats_sequence(nv_curve, delta, ld)
                     label = np.loadtxt(os.path.join(beat_label_dir, file_name.replace('.wav', '.beats').split('/')[-1]))
                     score.append(evaluate(label[:, 0], t[beats]))
