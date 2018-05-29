@@ -4,7 +4,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
-from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux, genres_dir, tempo_estimation
+from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux, genres_dir, tempo_estimation, harmonic_sum_tempogram
 
 
 def tempogram_t(nv_curve, sr, window_size=512, hop_size=None):
@@ -25,6 +25,7 @@ if __name__ == '__main__':
     lw_sr = 100
     g = 1
     mean_size = 25
+    visualize = False
     for genre in genres:
         score = []
         ratio = []
@@ -38,6 +39,7 @@ if __name__ == '__main__':
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1)
                     f, tpg = tempogram_t(nv_curve, lw_sr)
+                    #f, tpg = harmonic_sum_tempogram(f, tpg, harms=2, alpha=2.)
                     t1, t2, s1 = tempo_estimation(f, tpg)
 
                     with open(os.path.join(bpm_label_dir,
@@ -66,16 +68,16 @@ if __name__ == '__main__':
             table_row.append("{:.4f}".format(p))
         table.add_row(table_row)
 
-
-        fig, ax = plt.subplots(1, 3, sharey='row')
-        fig.set_size_inches(8, 6)
-        ax[0].hist(ratio[0])
-        ax[0].set_title('T2/T1')
-        ax[1].hist(ratio[1])
-        ax[1].set_title('T1/G')
-        ax[2].hist(ratio[2])
-        ax[2].set_title('T2/G')
-        fig.suptitle(genre)
-        plt.show()
+        if visualize:
+            fig, ax = plt.subplots(1, 3, sharey='row')
+            fig.set_size_inches(8, 6)
+            ax[0].hist(ratio[0])
+            ax[0].set_title('T2/T1')
+            ax[1].hist(ratio[1])
+            ax[1].set_title('T1/G')
+            ax[2].hist(ratio[2])
+            ax[2].set_title('T2/G')
+            fig.suptitle(genre)
+            plt.show()
 
     print(table)

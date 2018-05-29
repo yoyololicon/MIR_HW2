@@ -2,7 +2,6 @@ from librosa.core import load
 import numpy as np
 import os
 import math
-import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 from utils import data_dir, beat_label_dir, genres, spectral_flux, genres_dir, tempo_estimation
 from Q6 import CFP
@@ -85,7 +84,7 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, 1024, 1, 25, lag=1)
-                    f, tpg = CFP(nv_curve, lw_sr, 2000, 512, 50)
+                    f, tpg = CFP(nv_curve, lw_sr, 1000, 512, 50)
                     t1, t2, s1 = tempo_estimation(f, tpg)
                     delta = 60 / t1 * lw_sr
                     beats = optimal_beats_sequence(nv_curve, delta, ld)

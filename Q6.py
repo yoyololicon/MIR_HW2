@@ -5,17 +5,18 @@ import os
 import matplotlib.pyplot as plt
 from prettytable import PrettyTable
 from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux, genres_dir, tempo_estimation, \
-    harmonics_sum_tempogram
+    harmonic_sum_tempogram
 
 
 def CFP(nv_curve, sr, wsize_f, wsize_t, hop_f, hop_t=None):
     tpg_f = np.abs(stft(nv_curve, n_fft=wsize_f, hop_length=hop_f))
     freq_f = np.arange(wsize_f // 2 + 1) * sr / wsize_f * 60
-    freq_f, tpg_f = harmonics_sum_tempogram(freq_f, tpg_f)
+    freq_f, tpg_f = harmonic_sum_tempogram(freq_f, tpg_f, harms=4, alpha=1.)
     tpg_f = normalize(tpg_f)
 
-    lag, _, tpg = stacf(nv_curve, sr, wsize_t, hop_size=hop_t)
-    tpg_t = normalize(tpg)
+    lag, _, tpg_t = stacf(nv_curve, sr, wsize_t, hop_size=hop_t)
+    #lag, tpg_t = harmonic_sum_tempogram(lag, tpg_t, harms=2, alpha=2.)
+    tpg_t = normalize(tpg_t)
     freq_t = 60 / lag[1:]
     freq_t = np.concatenate(([0], freq_t))
 
@@ -29,8 +30,7 @@ def CFP(nv_curve, sr, wsize_f, wsize_t, hop_f, hop_t=None):
         p_idx = (freq_t > f1) & (freq_t < f2)
         p_value = freq_t[p_idx]
         if len(p_value) > 0:
-            transformed_tpg_t[i] = np.mean(tpg_t[p_idx])
-
+            transformed_tpg_t[i] = np.max(tpg_t[p_idx])
     cfp = tpg_f[1:-1] * transformed_tpg_t
     return freq_f[1:-1], cfp[:, None]
 
@@ -45,7 +45,6 @@ if __name__ == '__main__':
     mean_size = 25
     for genre in genres:
         score = []
-        ratio = []
         for g_dir in genres_dir:
             if genre in g_dir and genre[:3] in g_dir[:3]:
                 print("Running", g_dir, "...")
@@ -61,28 +60,12 @@ if __name__ == '__main__':
                     with open(os.path.join(bpm_label_dir,
                                            file_name.replace('.wav', '.bpm').split('/')[-1])) as label_file:
                         truth = int(label_file.readline())
-                        # print(truth, t1, t2, s1)
                         score.append(p_score(truth, t1, t2, s1))
-                        ratio.append((t2 / t1, t1 / truth, t2 / truth))
+
         score = np.array(score)
-        ratio = np.array(ratio).T
         average_p = score.mean()
         score[score > 0] = 1
         average_alotc = score.mean()
 
         table.add_row([genre, "{:.4f}".format(average_p), "{:.4f}".format(average_alotc)])
-
-        '''
-        fig, ax = plt.subplots(1, 3, sharey='row')
-        fig.set_size_inches(8, 6)
-        ax[0].hist(ratio[0])
-        ax[0].set_title('T2/T1')
-        ax[1].hist(ratio[1])
-        ax[1].set_title('T1/G')
-        ax[2].hist(ratio[2])
-        ax[2].set_title('T2/G')
-        fig.suptitle(genre)
-        plt.show()
-        '''
-
     print(table)

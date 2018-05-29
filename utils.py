@@ -18,7 +18,7 @@ def spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1):
 
     y = np.log(1 + g * np.abs(x))
     spflx = np.maximum(0., y[:, lag:] - y[:, :-lag]).mean(axis=0)
-    t2 = t[:-lag] + (t[lag:] - t[:-lag]) / 2
+    t2 = (t[lag:] + t[:-lag]) / 2
 
     # post-processing
     filter = np.ones(mean_size) / mean_size
@@ -66,30 +66,16 @@ def tempo_estimation(freq_scale, tempogram):
     if pack[0][1] > pack[1][1]:
         pack = pack[::-1]
     s1 = pack[0][0] / (pack[0][0] + pack[1][0])
-    # return t1, t2, s1
     return pack[0][1], pack[1][1], s1
 
-def harmonics_sum_tempogram(freq_scale, tempogram, harms=4):
-    tpg = np.empty((tempogram.shape[0]//harms, tempogram.shape[1]))
-    tpg[0] = tempogram[0]
+
+def harmonic_sum_tempogram(freq_scale, tempogram, harms=4, alpha=1.):
+    tpg = tempogram[:len(freq_scale) // harms, :]
+    weights = np.power(alpha, -np.arange(1, harms))
     for i in range(1, tpg.shape[0]):
-        stop = i*(harms+1)
-        tpg[i] = np.sum(tempogram[i:stop:i], axis=0)
+        stop = i * (harms + 1)
+        tpg[i] += np.sum(tempogram[2 * i:stop:i] * weights[:, None], axis=0)
     return freq_scale[:tpg.shape[0]], tpg
-
-def tempo_estimation_sum_harm(freq_scale, tempogram, harms=2):
-    tempo_vector = np.sum(tempogram, axis=1)
-    for i in range(1, len(tempo_vector) // harms):
-        stop = i*(harms+1)
-        tempo_vector[i] = np.sum(tempo_vector[i:stop:i])
-    tempo_vector = tempo_vector[:len(tempo_vector) // harms]
-    peak_idx = argrelmax(tempo_vector)
-    peaks = sorted(zip(tempo_vector[peak_idx], freq_scale[peak_idx]), key=lambda x: x[0], reverse=True)
-    pack = peaks[:2]
-    if pack[0][1] > pack[1][1]:
-        pack = pack[::-1]
-    s1 = pack[0][0] / (pack[0][0] + pack[1][0])
-    return pack[0][1], pack[1][1], s1
 
 
 def bpm_scale(tpg, freq_scale, bpm_max, bpm_min, interval=1):
