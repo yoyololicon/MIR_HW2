@@ -8,14 +8,14 @@ from utils import data_dir, bpm_label_dir, genres, p_score, stacf, spectral_flux
     harmonic_sum_tempogram
 
 
-def CFP(nv_curve, sr, wsize_f, wsize_t, hop_f, hop_t=None):
+def CFP(nv_curve, sr, wsize_f, wsize_t, hop_f, hop_t=None, harms=4, alpha=1.):
     tpg_f = np.abs(stft(nv_curve, n_fft=wsize_f, hop_length=hop_f))
     freq_f = np.arange(wsize_f // 2 + 1) * sr / wsize_f * 60
-    freq_f, tpg_f = harmonic_sum_tempogram(freq_f, tpg_f, harms=4, alpha=1.)
+    freq_f, tpg_f = harmonic_sum_tempogram(freq_f, tpg_f, harms=harms, alpha=alpha)
     tpg_f = normalize(tpg_f)
 
     lag, _, tpg_t = stacf(nv_curve, sr, wsize_t, hop_size=hop_t)
-    #lag, tpg_t = harmonic_sum_tempogram(lag, tpg_t, harms=2, alpha=2.)
+    #lag, tpg_t = harmonic_sum_tempogram(lag, tpg_t, harms=2, alpha=1.)
     tpg_t = normalize(tpg_t)
     freq_t = 60 / lag[1:]
     freq_t = np.concatenate(([0], freq_t))
@@ -54,7 +54,7 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1)
-                    f, tpg = CFP(nv_curve, lw_sr, wsize_f=1000, wsize_t=512, hop_f=50)
+                    f, tpg = CFP(nv_curve, lw_sr, wsize_f=2000, wsize_t=512, hop_f=50)
                     t1, t2, s1 = tempo_estimation(f, tpg)
 
                     with open(os.path.join(bpm_label_dir,

@@ -69,7 +69,7 @@ def tempo_estimation(freq_scale, tempogram):
     return pack[0][1], pack[1][1], s1
 
 
-def harmonic_sum_tempogram(freq_scale, tempogram, harms=4, alpha=1.):
+def harmonic_sum_tempogram(freq_scale, tempogram, harms, alpha):
     tpg = tempogram[:len(freq_scale) // harms, :]
     weights = np.power(alpha, -np.arange(1, harms))
     for i in range(1, tpg.shape[0]):

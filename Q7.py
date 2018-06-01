@@ -84,9 +84,13 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, 1024, 1, 25, lag=1)
-                    f, tpg = CFP(nv_curve, lw_sr, 1000, 512, 50)
+                    f, tpg = CFP(nv_curve, lw_sr, 2000, 512, 50)
                     t1, t2, s1 = tempo_estimation(f, tpg)
-                    delta = 60 / t1 * lw_sr
+                    if s1 > 0.5:
+                        delta = t1
+                    else:
+                        delta = t2
+                    delta = 60 / delta * lw_sr
                     beats = optimal_beats_sequence(nv_curve, delta, ld)
                     label = np.loadtxt(os.path.join(beat_label_dir, file_name.replace('.wav', '.beats').split('/')[-1]))
                     score.append(evaluate(label[:, 0], t[beats]))

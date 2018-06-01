@@ -35,8 +35,8 @@ if __name__ == '__main__':
                     data, sr = load(os.path.join(dir, file_name), sr=None)
                     hop_size = sr // lw_sr
                     t, nv_curve = spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1)
-                    f, tpg = tempogram_f(nv_curve, lw_sr, window_size=1000, hop_size=50)
-                    #f, tpg = harmonic_sum_tempogram(f, tpg)
+                    f, tpg = tempogram_f(nv_curve, lw_sr, window_size=2000, hop_size=50)
+                    f, tpg = harmonic_sum_tempogram(f, tpg, 4, 1.)
                     t1, t2, s1 = tempo_estimation(f, tpg)
 
                     with open(os.path.join(bpm_label_dir,
