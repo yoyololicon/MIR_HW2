@@ -12,6 +12,23 @@ bpm_label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotation
 beat_label_dir = '/media/ycy/86A4D88BA4D87F5D/DataSet/Ballroom/BallroomAnnotations-beat'
 
 
+def spectral_flux_with_stft(data, sr, hop_size, window_size, g, mean_size, lag=1):
+    x = core.stft(data, n_fft=window_size, hop_length=hop_size)
+    t = np.arange(x.shape[1]) * hop_size / sr
+
+    y = np.log(1 + g * np.abs(x))
+    spflx = np.maximum(0., y[:, lag:] - y[:, :-lag]).mean(axis=0)
+    t2 = (t[lag:] + t[:-lag]) / 2
+    y2 = (y[:, lag:] + y[:, :-lag]) / 2
+
+    # post-processing
+    filter = np.ones(mean_size) / mean_size
+    u = signal.fftconvolve(spflx, filter, 'same')
+    spfx_enhance = np.maximum(0., spflx - u)
+    spfx_enhance /= spfx_enhance.max()
+    return t2, spfx_enhance, y2
+
+
 def spectral_flux(data, sr, hop_size, window_size, g, mean_size, lag=1):
     x = core.stft(data, n_fft=window_size, hop_length=hop_size)
     t = np.arange(x.shape[1]) * hop_size / sr
