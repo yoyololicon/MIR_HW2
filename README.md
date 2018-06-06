@@ -136,8 +136,10 @@ This is a bonus question, and I just do some trial and error to see what will ha
 a bidirectional spectral flux novelty curve in beat level, and use the same algorithm in Q7 to find the path of downbeat 
 with fix period of 4 samples (which means I assume the beats are isometric and have time signature of 4/4).
 
-The result apparently not good, but it's fun to try using traditional technique instead of fancy machine learning method.
+The result is apparently not good, but it's fun to try using traditional technique instead of fancy machine learning method.
 
+    $ python3 downbeat.py
+    
     +---------------+-----------+--------+----------+
     |     Genre     | Precision | Recall | F-scores |
     +---------------+-----------+--------+----------+
