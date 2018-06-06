@@ -2,6 +2,7 @@ from librosa.core import load, autocorrelate
 import numpy as np
 import os
 from prettytable import PrettyTable
+import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve, argrelmax
 from utils import data_dir, beat_label_dir, genres, spectral_flux_with_stft, genres_dir, tempo_estimation
 from Q6 import CFP
@@ -33,12 +34,24 @@ if __name__ == '__main__':
                     beats = optimal_beats_sequence(nv_curve, delta, ld)
 
                     spec = spec[:, beats]
-                    t = t[beats]
-                    beat_nv_curve = np.maximum(0., spec[:, 1:] - spec[:, :-1]).mean(axis=0)
-                    u = fftconvolve(beat_nv_curve, np.array([0.3, 0.4, 0.3]), 'same')
-                    downbeats = argrelmax(u)[0] + 1
-
+                    spec1 = np.maximum(0., spec[:, 1:-1] - spec[:, :-2]).mean(axis=0)
+                    spec2 = np.maximum(0., spec[:, 1:-1] - spec[:, 2:]).mean(axis=0)
+                    beat_curve = spec2 * spec1
+                    beat_curve /= beat_curve.max()
+                    t = t[beats[1:-1]]
+                    #beat_curve = fftconvolve(beat_curve, np.array([0.25, 0.6, 0.25]), 'same')
+                    '''
+                    acf = autocorrelate(beat_curve)[2:5]
+                    peaks = argrelmax(acf)[0]
+                    if len(peaks) > 0:
+                        time = peaks[0] + 2
+                    else:
+                        time = 4
+                    '''
+                    downbeats = argrelmax(beat_curve)[0]
+                    #downbeats = optimal_beats_sequence(beat_curve, 4, ld)
                     label = np.loadtxt(os.path.join(beat_label_dir, file_name.replace('.wav', '.beats').split('/')[-1]))
+                    #print(time, label[:, 1].max().astype(int))
                     label = np.squeeze(label[np.where(label[:, 1] == 1.), 0])
                     score.append(evaluate(label, t[downbeats]))
 
