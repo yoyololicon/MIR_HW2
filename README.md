@@ -17,11 +17,12 @@ consist of 30s long ballroom dancing music pieces.
 2. Download the [tempo annotations](http://www.iua.upf.edu/mtg/ismir2004/contest/tempoContest/data2.tar.gz) of each pieces.
 3. Donwload the [beat annotations](https://github.com/CPJKU/BallroomAnnotations).
 4. Modified the directory variables in [utils.py](utils.py) to where you unzip the data.
-
     
+    ```
     data_dir = '/where/you/put/audio/files'
     bpm_label_dir = '/where/you/put/bpm/annotations'
     beat_label_dir = /where/you/put/beat/annotations'
+    ```
     
 ## Usage of each file
 
